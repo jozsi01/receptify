@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   docker:
@@ -43,7 +44,10 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: "{{defaultContext}}:backend"
+          # Ez megmondja, hogy lépjen be a backend mappába, és onnan dolgozzon
+          context: ./backend
+          # Ez megmondja, hogy pontosan hol van a Dockerfile
+          file: ./backend/Dockerfile
           # IMPORTANT: Build for both standard PC and Raspberry Pi
           platforms: linux/amd64,linux/arm64
           push: true
