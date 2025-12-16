@@ -6,13 +6,13 @@ A Receptify egy otthoni webalkalmazás, ami segít digitalizálni és rendszerez
 
 ## ✨ Főbb funkciók
 ### - 📸 AI Digitalizálás: 
-    Csak fotózd le a receptet, a rendszer automatikusan kinyeri a címet, a hozzávalókat és az elkészítést.
+Csak fotózd le a receptet, a rendszer automatikusan kinyeri a címet, a hozzávalókat és az elkészítést.
 
 ### - 👨‍🍳 Főzés Mód (Cooking Mode): 
-    Letisztult nézet a főzéshez, ahol interaktív checkboxokkal pipálhatod ki az előkészített hozzávalókat.
+Letisztult nézet a főzéshez, ahol interaktív checkboxokkal pipálhatod ki az előkészített hozzávalókat.
 
 ### - 📱 Mobilra tervezve: 
-    Telefonon és tableten is könnyen kezelhető felület.
+Telefonon és tableten is könnyen kezelhető felület.
 
 ## 🚀 Technológia
 Hardver: Raspberry Pi 5
