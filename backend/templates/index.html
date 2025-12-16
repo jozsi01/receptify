@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receptify</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script defer src="/static/js/polling.js"></script>
+    <style>
+        :root {
+            --primary-color: #10b981;
+            --primary-dark: #059669;
+            --danger-color: #ef4444;
+            /* Piros a törléshez */
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- Header --- */
+        header {
+            background-color: var(--card-bg);
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand {
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            letter-spacing: -0.5px;
+        }
+
+        nav {
+            display: flex;
+            gap: 1rem;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        nav a.active {
+            color: var(--primary-color);
+            background-color: rgba(16, 185, 129, 0.1);
+        }
+
+        /* --- Main --- */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem;
+            overflow-y: auto;
+            align-items: center;
+        }
+
+        /* Upload Box (Kisebb lett, hogy elférjenek a képek alatta) */
+        .upload-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 2rem;
+            background-color: var(--card-bg);
+            border: 3px dashed #cbd5e1;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            margin-bottom: 2rem;
+        }
+
+        .upload-container:active {
+            transform: scale(0.98);
+            border-color: var(--primary-color);
+            background-color: rgba(16, 185, 129, 0.05);
+        }
+
+        .plus-sign {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-text {
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        #file-upload {
+            display: none;
+        }
+
+        /* --- Preview Grid (Itt jelennek meg a képek) --- */
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 20px;
+        }
+
+        .preview-card {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1/1;
+            /* Négyzet alakú */
+            border-radius: 12px;
+            overflow: visible;
+            /* Hogy a kilógó X gomb látszódjon */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .preview-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 12px;
+            border: 2px solid white;
+        }
+
+        /* A kis X gomb */
+        .delete-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background-color: var(--danger-color);
+            color: white;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+        }
+
+        /* --- Küldés Gomb --- */
+        .submit-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1rem;
+            width: 100%;
+            max-width: 400px;
+            cursor: pointer;
+            display: none;
+            /* Alapból rejtett */
+            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <header>
+        <div class="brand">Receptify</div>
+        <nav>
+            <a href="#" class="active">Új Recept</a>
+            <a href="/receptek">Receptek</a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="upload-container" onclick="document.getElementById('file-upload').click()">
+            <div class="plus-sign">+</div>
+            <div class="upload-text">Recept kép hozzáadása</div>
+
+            <input type="file" id="file-upload" name="images" multiple accept="image/*" onchange="handleFiles(this)">
+        </div>
+
+        <div class="preview-grid" id="preview-container"></div>
+
+        <button id="process-btn" class="submit-btn" onclick="uploadData()">Feltöltés</button>
+    </main>
+
+    <script>
+        // Ez a tömb tárolja a tényleges fájlokat
+        let storedFiles = [];
+
+        function handleFiles(input) {
+            const files = Array.from(input.files);
+            if (files.length > 0) {
+                storedFiles = storedFiles.concat(files);
+                renderPreviews();
+                updateInputFiles();
+
+                // Mivel a polling.js be van töltve, használhatjuk a showToast-ot!
+                if (typeof showToast === "function") {
+                    showToast(`${files.length} kép hozzáadva`, 'info');
+                }
+            }
+            input.value = '';
+        }
+
+        function renderPreviews() {
+            const container = document.getElementById('preview-container');
+            const processBtn = document.getElementById('process-btn');
+            container.innerHTML = '';
+
+            storedFiles.forEach((file, index) => {
+                const card = document.createElement('div');
+                card.className = 'preview-card';
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.className = 'preview-image';
+
+                const deleteBtn = document.createElement('div');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.innerHTML = '×';
+                deleteBtn.onclick = () => removeFile(index);
+
+                card.appendChild(img);
+                card.appendChild(deleteBtn);
+                container.appendChild(card);
+            });
+
+            processBtn.style.display = storedFiles.length > 0 ? 'block' : 'none';
+        }
+
+        function removeFile(index) {
+            storedFiles.splice(index, 1);
+            renderPreviews();
+            updateInputFiles();
+        }
+
+        function updateInputFiles() {
+            const dataTransfer = new DataTransfer();
+            storedFiles.forEach(file => dataTransfer.items.add(file));
+            document.getElementById('file-upload').files = dataTransfer.files;
+        }
+
+        // --- AZ ÚJ, JAVÍTOTT FELTÖLTÉS LOGIKA ---
+        function uploadData() {
+            if (storedFiles.length === 0) return;
+
+            const btn = document.getElementById('process-btn');
+
+            // UI visszajelzés
+            btn.innerText = "Feldolgozás...";
+            btn.disabled = true;
+            btn.style.backgroundColor = "#cbd5e1";
+
+            const formData = new FormData();
+            storedFiles.forEach(file => {
+                formData.append("images", file);
+            });
+
+            // Fontos: /upload-ra küldjük, nem /prompt-ra (hogy egyezzen a Go kóddal)
+            fetch('/prompt', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => {
+                    if (response.ok) return response.json();
+                    throw new Error("Szerver hiba");
+                })
+                .then(data => {
+                    // 1. SIKER: Megkaptuk a job_id-t (pl. "job_12345")
+                    console.log("Job ID kapva:", data.job_id);
+
+                    // 2. Elmentjük a tárolóba -> Ekkor a polling.js automatikusan észreveszi!
+                    localStorage.setItem('active_job_id', data.job_id);
+
+                    // 3. UI Visszajelzés (polling.js showToast-ját használva)
+                    if (typeof showToast === "function") {
+                        showToast("Feldolgozás elindítva a háttérben!", "info");
+                    } else {
+                        alert("Feldolgozás elindítva!");
+                    }
+
+                    // 4. Takarítás: Töröljük a képeket és a gombot visszaállítjuk
+                    storedFiles = [];
+                    renderPreviews();
+
+                    btn.innerText = "Feltöltés";
+                    btn.disabled = false;
+                    btn.style.backgroundColor = "#10b981";
+
+                    // Opcionális: Át is dobhatjuk a user-t a receptek oldalra
+                    // window.location.href = "/receptek";
+                })
+                .catch(error => {
+                    console.error("Hiba:", error);
+                    if (typeof showToast === "function") {
+                        showToast("Nem sikerült elindítani a feltöltést.", "error");
+                    } else {
+                        alert("Hiba történt.");
+                    }
+
+                    btn.innerText = "Próbáld újra";
+                    btn.disabled = false;
+                    btn.style.backgroundColor = "#ef4444";
+                });
+        }
+    </script>
+</body>
+
+</html>

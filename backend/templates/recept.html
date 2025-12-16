@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receptek - Receptify</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script defer src="/static/js/polling.js"></script>
+    <style>
+        :root {
+            --primary-color: #10b981;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+        }
+
+        /* Header (Ugyanaz mint az előzőben a konzisztencia miatt) */
+        header {
+            background-color: var(--card-bg);
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .loading-card {
+            border: 2px dashed var(--primary-color);
+            /* Szaggatott keret jelzi, hogy készül */
+            opacity: 0.8;
+        }
+
+        /* A pulzáló animáció */
+        @keyframes pulse {
+            0% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.5;
+            }
+        }
+
+        .skeleton-box {
+            background-color: #e2e8f0;
+            /* Szürke háttér */
+            border-radius: 4px;
+            margin-bottom: 8px;
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+
+        .skeleton-title {
+            height: 24px;
+            width: 60%;
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Cím helye */
+        .skeleton-tag {
+            height: 20px;
+            width: 60px;
+            display: inline-block;
+            border-radius: 20px;
+            margin-right: 5px;
+        }
+
+        .skeleton-text {
+            height: 16px;
+            width: 100%;
+            margin-bottom: 6px;
+        }
+
+        .skeleton-text.short {
+            width: 80%;
+        }
+
+        /* Spinner a fejlécben */
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .brand {
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: var(--primary-color);
+        }
+
+        nav {
+            display: flex;
+            gap: 1rem;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+        }
+
+        nav a.active {
+            color: var(--primary-color);
+            background-color: rgba(16, 185, 129, 0.1);
+        }
+
+        /* Main Container */
+        main {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        h1 {
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+            color: var(--text-main);
+        }
+
+        /* --- Recept Kártya Stílus --- */
+        .recipe-list {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .recipe-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s;
+        }
+
+        .recipe-header {
+            background-color: var(--primary-color);
+            padding: 1rem 1.5rem;
+            color: white;
+        }
+
+        .recipe-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .recipe-body {
+            padding: 1.5rem;
+        }
+
+        /* Hozzávalók */
+        .section-title {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ingredients-list {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 1.5rem;
+        }
+
+        .ingredient-tag {
+            background-color: #f1f5f9;
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Elkészítés */
+        .description-text {
+            line-height: 1.6;
+            color: var(--text-main);
+            /* Ez a kulcs! Megőrzi a sortöréseket, ha stringként jön a szöveg */
+            white-space: pre-line;
+        }
+
+        /* Empty state (ha nincs recept) */
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            margin-top: 3rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="brand">Receptify</div>
+        <nav>
+            <a href="/">Új Recept</a>
+            <a href="/receptek" class="active">Receptek</a>
+        </nav>
+    </header>
+
+    <main>
+        <h1>Mentett Receptek</h1>
+
+        <div class="recipe-list">
+            {{ if . }}
+            {{ range . }}
+            <article class="recipe-card">
+                <div class="recipe-header">
+                    <div class="recipe-title">{{ .Name }}</div>
+                </div>
+                <div class="recipe-body">
+
+                    <div class="section-title">
+                        🛒 Hozzávalók
+                    </div>
+                    <ul class="ingredients-list">
+                        {{ range .Ingridients }}
+                        <li class="ingredient-tag">{{ . }}</li>
+                        {{ end }}
+                    </ul>
+
+                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 1rem 0;">
+
+                    <div class="section-title">
+                        👨‍🍳 Elkészítés
+                    </div>
+                    <div class="description-text">
+                        {{ .Description }}
+                    </div>
+                </div>
+            </article>
+            {{ end }}
+            {{ else }}
+            <div class="empty-state">
+                <p>Még nincsenek feltöltött receptjeid.</p>
+                <p><a href="/" style="color: var(--primary-color);">Készíts egyet most!</a></p>
+            </div>
+            {{ end }}
+        </div>
+    </main>
+
+</body>
+
+</html>

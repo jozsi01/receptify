@@ -1,0 +1,26 @@
+services:
+  mongo:
+    image: mongo:8.2.2
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${DBUSER}
+      MONGO_INITDB_ROOT_PASSWORD: ${DBPASS}
+    volumes:
+      # JAVÍTVA: A mongo alapértelmezetten a /data/db-be ment, nem az /etc-be!
+      - receptdb:/data/db
+    
+
+  webserver:
+    image: jozsi01/receptify:1.0
+    pull_policy: always
+    restart: always
+    environment:
+      - API_KEY=${API_KEY}
+      - DBPASS=${DBPASS}
+      - DBUSER=${DBUSER}
+      - DBURL=mongodb://${DBUSER}:${DBPASS}@mongo:27017
+    ports:
+      - "8080:8080"
+
+volumes:
+  receptdb:
