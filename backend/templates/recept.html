@@ -86,6 +86,20 @@
             border-radius: 20px;
             margin-right: 5px;
         }
+        .cooking-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .cooking-btn:hover {
+            background-color: rgb(9, 216, 9)
+        }
 
         .skeleton-text {
             height: 16px;
@@ -248,28 +262,27 @@
         <div class="recipe-list">
             {{ if . }}
             {{ range . }}
-            <article class="recipe-card">
+            <article class="recipe-card" onclick="location.href='/cooking/{{.ID}}'" style="cursor: pointer;">
                 <div class="recipe-header">
                     <div class="recipe-title">{{ .Name }}</div>
                 </div>
                 <div class="recipe-body">
 
-                    <div class="section-title">
-                        🛒 Hozzávalók
-                    </div>
+                    <div class="section-title">🛒 Hozzávalók</div>
                     <ul class="ingredients-list">
                         {{ range .Ingridients }}
                         <li class="ingredient-tag">{{ . }}</li>
                         {{ end }}
                     </ul>
 
-                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 1rem 0;">
-
-                    <div class="section-title">
-                        👨‍🍳 Elkészítés
-                    </div>
-                    <div class="description-text">
+                    <div class="description-text" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
                         {{ .Description }}
+                    </div>
+
+                    <div style="margin-top: 1.5rem; text-align: right;">
+                        <button class="cooking-btn">
+                            👨‍🍳 Főzés Indítása
+                        </button>
                     </div>
                 </div>
             </article>

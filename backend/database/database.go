@@ -29,7 +29,7 @@ func ConnectDatabase() {
 	// Good practice: Use a context with a timeout for connection
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
+	fmt.Println(os.Getenv("DBURL"))
 	// Connect to MongoDB
 	client, err := mongo.Connect(options.Client().ApplyURI(os.Getenv("DBURL")))
 	if err != nil {
@@ -86,6 +86,20 @@ func GetAllRecepts() ([]Recept, error) {
 	if err = cursor.All(ctx, &recepts); err != nil {
 		return nil, fmt.Errorf("failed to decode documents: %w", err)
 	}
-
 	return recepts, nil
+}
+
+func GetReceptByID(recept_id string) (Recept, error) {
+	coll := mongoClient.Database("receptify").Collection("recepts")
+
+	// 1. Create a context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var res Recept
+
+	result := coll.FindOne(ctx, bson.M{"id": recept_id})
+	if err := result.Decode(&res); err != nil {
+		return res, err
+	}
+	return res, nil
 }

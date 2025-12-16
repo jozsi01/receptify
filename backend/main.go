@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 var receptek []database.Recept
@@ -86,6 +88,7 @@ func createRequestBody(encodedImages []string) string {
 	return string(jsonData)
 }
 func sendPrompt(jobID string, images []string) database.Recept {
+
 	apiKey := os.Getenv("API_KEY")
 	client := http.Client{Timeout: time.Duration(120) * time.Second}
 
@@ -165,11 +168,30 @@ func handleReceptekView(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func main() {
+func handleCookingView(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	result, err := database.GetReceptByID(id)
+	fmt.Printf("res: %v\n", result)
+	if err != nil {
+		fmt.Println(err)
+		http.NotFound(w, r)
+		return
+	}
+	tmpl, err := template.ParseFiles("./templates/cooking.html")
+	if err != nil {
+		http.Error(w, "Hiba a template betöltésekor", http.StatusInternalServerError)
+		return
+	}
+	tmpl.Execute(w, result)
 
+}
+
+func main() {
+	godotenv.Load()
 	database.ConnectDatabase()
 
 	http.HandleFunc("/prompt", handlePrompt)
+	http.HandleFunc("GET /cooking/{id}", handleCookingView)
 	http.HandleFunc("/", handleMainView)
 	http.HandleFunc("/receptek", handleReceptekView)
 	http.HandleFunc("/status", handleStatus)
