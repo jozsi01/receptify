@@ -19,7 +19,7 @@ type Recept struct {
 	// If it is empty, Mongo generates one automatically.
 	ID          string   `json:"id,omitempty" bson:"id,omitempty"`
 	Name        string   `json:"recept_neve" bson:"recept_neve"`
-	Ingridients []string `json:"hozzavalok" bson:"hozzavalok"`
+	Ingridients map[string]string `json:"hozzavalok" bson:"hozzavalok"`
 	Description string   `json:"elkeszites" bson:"elkeszites"`
 }
 

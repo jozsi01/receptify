@@ -107,7 +107,7 @@ function checkJobStatus() {
             if (!data) return;
 
             if (data.status === 'done') {
-                showToast(`✅ Kész! ${data.result.recept_neve} elkészült.`, 'success');
+                showToast(`Kész! ${data.result.recept_neve} elkészült.`, 'success');
                 localStorage.removeItem('active_job_id');
                 
                 // Ha a receptek oldalon vagyunk
@@ -117,7 +117,7 @@ function checkJobStatus() {
                     setTimeout(() => location.reload(), 1000);
                 }
             } else if (data.status === 'error') {
-                showToast('❌ Hiba történt a feldolgozásban.', 'error');
+                showToast('Hiba történt a feldolgozásban.', 'error');
                 localStorage.removeItem('active_job_id');
                 
                 // Loading kártya eltávolítása hiba esetén

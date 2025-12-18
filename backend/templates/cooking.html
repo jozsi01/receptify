@@ -19,10 +19,9 @@
             background-color: var(--bg-color);
             color: var(--text-main);
             margin: 0;
-            padding-bottom: 80px; /* Hely a lebegő gombnak, ha lenne */
+            padding-bottom: 80px;
         }
 
-        /* Navigációs sáv vissza gombbal */
         .top-nav {
             background: white;
             padding: 1rem;
@@ -63,7 +62,6 @@
             padding: 1.5rem;
         }
 
-        /* --- Csekkolós lista (A lényeg) --- */
         .ingredient-group {
             background: white;
             border-radius: 12px;
@@ -72,6 +70,8 @@
             margin-bottom: 2rem;
         }
 
+        /* --- JAVÍTOTT CSS RÉSZ INNENTŐL --- */
+
         .check-item {
             display: flex;
             align-items: center;
@@ -79,16 +79,16 @@
             border-bottom: 1px solid #f1f5f9;
             cursor: pointer;
             transition: all 0.2s;
+            /* Fontos: relatív pozíció, hogy a gyerekekhez képest tudjunk számolni */
+            position: relative; 
         }
 
         .check-item:last-child { border-bottom: none; }
 
-        /* A checkbox elrejtése (custom design lesz) */
         .check-input {
             display: none; 
         }
 
-        /* A négyzet */
         .check-box {
             width: 24px;
             height: 24px;
@@ -102,7 +102,6 @@
             flex-shrink: 0;
         }
 
-        /* A szöveg */
         .check-label {
             font-size: 1rem;
             font-weight: 500;
@@ -110,30 +109,34 @@
             transition: color 0.2s;
         }
 
-        /* --- Interakció (Ha be van pipálva) --- */
-        .check-input:checked + .check-item .check-box {
+        /* 1. Doboz színezése: Ha az INPUT be van pipálva, a közvetlenül utána jövő BOX legyen zöld */
+        .check-input:checked + .check-box {
             background-color: var(--primary-color);
             border-color: var(--primary-color);
         }
 
-        /* Pipa jel a dobozban (CSS trükk) */
-        .check-input:checked + .check-item .check-box::after {
+        /* 2. Pipa jel: Ha az INPUT be van pipálva, a BOX after eleme jelenjen meg */
+        .check-input:checked + .check-box::after {
             content: '✓';
             color: white;
             font-weight: bold;
             font-size: 16px;
         }
 
-        .check-input:checked + .check-item .check-label {
+        /* 3. Szöveg áthúzása: Ha az INPUT be van pipálva, a testvére (~) LABEL legyen áthúzva */
+        .check-input:checked ~ .check-label {
             text-decoration: line-through;
             color: var(--text-muted);
         }
 
-        .check-input:checked + .check-item {
+        /* 4. Háttérszín a soron (Modern CSS :has selector) */
+        /* Ez azt jelenti: Ha a check-item tartalmaz pipált inputot, legyen szürke a háttere */
+        .check-item:has(.check-input:checked) {
             background-color: #f8fafc;
         }
 
-        /* --- Elkészítés rész --- */
+        /* --- JAVÍTOTT RÉSZ VÉGE --- */
+
         .instructions {
             background: white;
             border-radius: 12px;
@@ -156,12 +159,16 @@
     <main>
         <h2>🛒 Hozzávalók</h2>
         <div class="ingredient-group">
-            {{ range $index, $element := .Ingridients }}
+            {{ range $name, $unit := .Ingridients }}
             <div>
-                <input type="checkbox" id="ing-{{$index}}" class="check-input">
-                <label for="ing-{{$index}}" class="check-item">
+                <label class="check-item">
+                    <input name="check-item" type="checkbox" class="check-input">
                     <div class="check-box"></div>
-                    <div class="check-label">{{ $element }}</div>
+                    
+                    <div class="check-label" style="display: flex; justify-content: space-between; width: 100%;">
+                        <span>{{ $name }}</span>
+                        <span style="color: var(--text-muted); font-size: 0.9em;">{{ $unit }}</span>
+                    </div>
                 </label>
             </div>
             {{ end }}

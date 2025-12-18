@@ -87,6 +87,7 @@
             border-radius: 20px;
             margin-right: 5px;
         }
+
         .cooking-btn {
             background-color: var(--primary-color);
             color: white;
@@ -98,6 +99,7 @@
             cursor: pointer;
             transition: background 0.2s;
         }
+
         .cooking-btn:hover {
             background-color: rgb(9, 216, 9)
         }
@@ -244,6 +246,41 @@
             color: var(--text-muted);
             margin-top: 3rem;
         }
+
+        /* --- Táblázat Stílus --- */
+        .ingredients-table {
+            width: 100%;
+            border-collapse: collapse;
+            /* Eltünteti a duplavonalakat */
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+        }
+
+        .ingredients-table th {
+            text-align: left;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 2px solid var(--border-color);
+            padding: 8px 4px;
+        }
+
+        .ingredients-table td {
+            padding: 8px 4px;
+            border-bottom: 1px solid #f1f5f9;
+            color: var(--text-main);
+        }
+
+        /* Minden második sor legyen halványabb (Zebra csíkozás) - Opcionális */
+        .ingredients-table tr:nth-child(even) {
+            background-color: #fcfcfc;
+        }
+
+        /* Az utolsó sornál ne legyen aláhúzás */
+        .ingredients-table tr:last-child td {
+            border-bottom: none;
+        }
     </style>
 </head>
 
@@ -270,13 +307,25 @@
                 <div class="recipe-body">
 
                     <div class="section-title">🛒 Hozzávalók</div>
-                    <ul class="ingredients-list">
-                        {{ range .Ingridients }}
-                        <li class="ingredient-tag">{{ . }}</li>
-                        {{ end }}
-                    </ul>
+                    <table class="ingredients-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 65%;">Alapanyag</th>
+                                <th>Mennyiség</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ range $name, $unit := .Ingridients }}
+                            <tr>
+                                <td style="font-weight: 500;">{{ $name }}</td>
+                                <td style="color: var(--text-muted);">{{ $unit }}</td>
+                            </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
 
-                    <div class="description-text" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                    <div class="description-text"
+                        style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
                         {{ .Description }}
                     </div>
 
