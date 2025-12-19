@@ -6,12 +6,14 @@
     <title>Főzés: {{ .Name }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <script defer src="/static/js/polling.js"></script>
     <style>
         :root {
             --primary-color: #10b981;
             --bg-color: #f8fafc;
             --text-main: #1e293b;
             --text-muted: #94a3b8;
+            --star-color: #fbbf24; /* Arany szín a csillagoknak */
         }
         
         body {
@@ -28,7 +30,7 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             position: sticky;
             top: 0;
-            z-index: 100;
+            z-index: 50; /* Kisebb z-index, hogy a modal felette legyen */
             display: flex;
             align-items: center;
             gap: 10px;
@@ -70,8 +72,6 @@
             margin-bottom: 2rem;
         }
 
-        /* --- JAVÍTOTT CSS RÉSZ INNENTŐL --- */
-
         .check-item {
             display: flex;
             align-items: center;
@@ -79,15 +79,12 @@
             border-bottom: 1px solid #f1f5f9;
             cursor: pointer;
             transition: all 0.2s;
-            /* Fontos: relatív pozíció, hogy a gyerekekhez képest tudjunk számolni */
             position: relative; 
         }
 
         .check-item:last-child { border-bottom: none; }
 
-        .check-input {
-            display: none; 
-        }
+        .check-input { display: none; }
 
         .check-box {
             width: 24px;
@@ -109,13 +106,11 @@
             transition: color 0.2s;
         }
 
-        /* 1. Doboz színezése: Ha az INPUT be van pipálva, a közvetlenül utána jövő BOX legyen zöld */
         .check-input:checked + .check-box {
             background-color: var(--primary-color);
             border-color: var(--primary-color);
         }
 
-        /* 2. Pipa jel: Ha az INPUT be van pipálva, a BOX after eleme jelenjen meg */
         .check-input:checked + .check-box::after {
             content: '✓';
             color: white;
@@ -123,19 +118,14 @@
             font-size: 16px;
         }
 
-        /* 3. Szöveg áthúzása: Ha az INPUT be van pipálva, a testvére (~) LABEL legyen áthúzva */
         .check-input:checked ~ .check-label {
             text-decoration: line-through;
             color: var(--text-muted);
         }
 
-        /* 4. Háttérszín a soron (Modern CSS :has selector) */
-        /* Ez azt jelenti: Ha a check-item tartalmaz pipált inputot, legyen szürke a háttere */
         .check-item:has(.check-input:checked) {
             background-color: #f8fafc;
         }
-
-        /* --- JAVÍTOTT RÉSZ VÉGE --- */
 
         .instructions {
             background: white;
@@ -147,6 +137,113 @@
         }
 
         h2 { font-size: 1.2rem; margin-bottom: 1rem; color: var(--primary-color); }
+
+        /* --- MODAL STÍLUSOK (ÚJ) --- */
+        .modal-overlay {
+            display: none; /* Alapból rejtett */
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5); /* Sötét háttér */
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+            box-sizing: border-box;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Amikor aktív, láthatóvá tesszük */
+        .modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            text-align: center;
+            position: relative;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+
+        /* Csillagok */
+        .stars-container {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            margin: 1.5rem 0;
+            flex-wrap: wrap; /* Mobilon ha nem fér ki, törje a sort */
+        }
+
+        .star {
+            font-size: 1.8rem;
+            cursor: pointer;
+            color: #e2e8f0; /* Alap szürke */
+            transition: color 0.2s;
+        }
+
+        /* Ha a csillag "filled" osztályt kap, sárga lesz */
+        .star.filled {
+            color: var(--star-color);
+        }
+
+        /* Textarea */
+        textarea.review-text {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            resize: vertical;
+            min-height: 80px;
+            margin-bottom: 1.5rem;
+            box-sizing: border-box;
+        }
+        
+        textarea.review-text:focus {
+            outline: 2px solid var(--primary-color);
+            border-color: transparent;
+        }
+
+        /* Submit Gomb */
+        .submit-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+        }
+        
+        .submit-btn:hover {
+            background-color: #059669;
+        }
+
     </style>
 </head>
 <body>
@@ -180,18 +277,140 @@
         </div>
         
         <div style="text-align: center; margin-top: 2rem;">
-            <a href="/receptek" style="
-                display: inline-block;
+            <button onclick="openModal()" style="
                 background: var(--primary-color);
                 color: white;
-                text-decoration: none;
+                border: none;
                 padding: 12px 30px;
                 border-radius: 50px;
                 font-weight: bold;
+                font-size: 1rem;
+                cursor: pointer;
                 box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
-            ">Kész vagyok! 🎉</a>
+            ">Kész vagyok! 🎉</button>
         </div>
     </main>
+
+    <div id="ratingModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeModal()">&times;</button>
+            
+            <h3 style="margin-top: 0;">Hogy sikerült?</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Értékeld a receptet 1-től 10-ig!</p>
+            
+            <div class="stars-container">
+                <span class="star" onclick="rate(1)">★</span>
+                <span class="star" onclick="rate(2)">★</span>
+                <span class="star" onclick="rate(3)">★</span>
+                <span class="star" onclick="rate(4)">★</span>
+                <span class="star" onclick="rate(5)">★</span>
+                <span class="star" onclick="rate(6)">★</span>
+                <span class="star" onclick="rate(7)">★</span>
+                <span class="star" onclick="rate(8)">★</span>
+                <span class="star" onclick="rate(9)">★</span>
+                <span class="star" onclick="rate(10)">★</span>
+            </div>
+
+            <textarea class="review-text" placeholder="Írj pár szót... Milyen lett? Változtattál valamin?"></textarea>
+
+            <button class="submit-btn" onclick="submitReview()">Mentés</button>
+        </div>
+    </div>
+
+    <script>
+        // Modal kezelés
+        function openModal() {
+            const modal = document.getElementById('ratingModal');
+            modal.classList.add('active'); // CSS-ben display: flex lesz
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('ratingModal');
+            modal.classList.remove('active');
+            window.location.href = "/receptek"; 
+        }
+
+        // Ha a sötét háttérre kattintunk, zárja be
+        document.getElementById('ratingModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // Csillag logika
+        let currentRating = 0;
+
+        function rate(score) {
+            currentRating = score;
+            const stars = document.querySelectorAll('.star');
+            
+            stars.forEach((star, index) => {
+                // Mivel az index 0-tól indul, hozzáadunk 1-et
+                if (index < score) {
+                    star.classList.add('filled');
+                } else {
+                    star.classList.remove('filled');
+                }
+            });
+            console.log("Kiválasztott értékelés:", currentRating);
+        }
+
+        // Mentés gomb
+        async function submitReview() {
+            const text = document.querySelector('.review-text').value;
+            // A Go template behelyettesíti az ID-t ide stringként
+            const recipeId = "{{ .ID }}"; 
+            
+            // Validáció: Csak akkor küldjük, ha van csillag
+            if (currentRating === 0) {
+                alert("Kérlek válassz egy értékelést!");
+                return;
+            }
+
+            // Az adat összeállítása a Go structnak megfelelően
+            const payload = {
+                stars: currentRating,
+                comment: text
+                // ID-t nem küldünk, azt majd a DB generálja vagy nem szükséges
+            };
+
+            // Gomb letiltása, hogy ne nyomja meg kétszer
+            const submitBtn = document.querySelector('.submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Küldés...";
+
+            try {
+                // Hálózati kérés (AJAX)
+                const response = await fetch(`/comment/${recipeId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    showToast("Köszönjük a vissazjelzést","success")
+                    closeModal();
+                    
+                    // Visszairányítás a recept listára, vagy maradhatsz itt is
+                    
+                } else {
+                    // HIBA (pl. 500 Internal Server Error)
+                    const errorMsg = await response.text();
+                    alert("Hiba történt a mentéskor: " + errorMsg);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Mentés";
+                }
+            } catch (error) {
+                // Hálózati hiba (pl. nincs internet)
+                console.error('Network error:', error);
+                alert("Hálózati hiba történt! Ellenőrizd a kapcsolatot.");
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Mentés";
+            }
+        }
+    </script>
 
 </body>
 </html>

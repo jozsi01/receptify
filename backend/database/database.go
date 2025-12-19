@@ -17,10 +17,31 @@ import (
 type Recept struct {
 	// 'bson:"_id,omitempty"' tells Mongo to use this as the primary key.
 	// If it is empty, Mongo generates one automatically.
-	ID          string   `json:"id,omitempty" bson:"id,omitempty"`
-	Name        string   `json:"recept_neve" bson:"recept_neve"`
+	ID          string            `json:"id,omitempty" bson:"id,omitempty"`
+	Name        string            `json:"recept_neve" bson:"recept_neve"`
 	Ingridients map[string]string `json:"hozzavalok" bson:"hozzavalok"`
-	Description string   `json:"elkeszites" bson:"elkeszites"`
+	Description string            `json:"elkeszites" bson:"elkeszites"`
+	Comments    []Comment         `json:"comments,omitempty" bson:"comments,omitempty"`
+}
+
+func (r Recept) GetAvrageRating() float32 {
+	if len(r.Comments) == 0 {
+		return 0
+	}
+	sum := 0
+	for _, komm := range r.Comments {
+		sum += komm.Stars
+	}
+	return float32(sum) / float32(len(r.Comments))
+}
+func (r Recept) GetCommentCount() int {
+	return len(r.Comments)
+}
+
+type Comment struct {
+	ID      string `json:"id,omitempty" bson:"id,omitempty"`
+	Stars   int    `json:"stars,omitempty" bson:"stars,omitempty"`
+	Comment string `json:"comment,omitempty" bson:"comment,omitempty"`
 }
 
 var mongoClient *mongo.Client
@@ -46,16 +67,31 @@ func ConnectDatabase() {
 	mongoClient = client
 }
 
+func AddCommentToRecept(receptID string, comment Comment) error {
+	coll := mongoClient.Database("receptify").Collection("recepts")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	update := bson.D{{"$push", bson.D{{"comments", comment}}}}
+	res, err := coll.UpdateOne(ctx, bson.M{"id": receptID}, update)
+	if err != nil {
+		fmt.Println("Something wrong with appending comment: ", err)
+		return err
+	}
+	fmt.Printf("Inserted komment: %v\n", res)
+	return nil
+
+}
+
 // SaveRecept inserts the struct into the database
 func SaveRecept(r Recept) (*mongo.InsertOneResult, error) {
 	fmt.Print("heelo\n")
 	uuid := uuid.New()
 	r.ID = uuid.String()
 	coll := mongoClient.Database("receptify").Collection("recepts")
-	// Create a context for this specific operation (e.g., 5 second timeout)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
+	r.Comments = []Comment{}
 	// InsertOne returns a result containing the new ID and an error if one occurred
 	result, err := coll.InsertOne(ctx, r)
 	if err != nil {

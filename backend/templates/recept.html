@@ -281,6 +281,34 @@
         .ingredients-table tr:last-child td {
             border-bottom: none;
         }
+        .recipe-header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .rating-badge {
+            background-color: rgba(255, 255, 255, 0.2); /* Átlátszó fehér */
+            padding: 4px 10px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .star-icon {
+            color: #fbbf24; /* Arany sárga */
+            font-size: 1.1rem;
+            line-height: 1; /* Hogy ne tolja el a szöveget */
+        }
+
+        .rating-count {
+            font-weight: 400;
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
     </style>
 </head>
 
@@ -300,9 +328,19 @@
         <div class="recipe-list">
             {{ if . }}
             {{ range . }}
-            <article class="recipe-card" onclick="location.href='/cooking/{{.ID}}'" style="cursor: pointer;">
-                <div class="recipe-header">
-                    <div class="recipe-title">{{ .Name }}</div>
+            <article class="recipe-card" style="cursor: pointer;">
+                <div onclick="location.href='/cooking/{{.ID}}'" class="recipe-header">
+                    <div class="recipe-header-content">
+                        <div class="recipe-title">{{ .Name }}</div>
+                        
+                        {{ if gt .GetCommentCount 0 }}
+                        <div onclick="event.stopPropagation(); location.href='/receptek/{{.ID}}/kommentek'" class="rating-badge">
+                            <span class="star-icon">★</span>
+                            <span>{{ printf "%.1f" .GetAvrageRating }}</span>
+                            <span class="rating-count">({{ .GetCommentCount }})</span>
+                        </div>
+                        {{ end }}
+                    </div>
                 </div>
                 <div class="recipe-body">
 
@@ -330,7 +368,7 @@
                     </div>
 
                     <div style="margin-top: 1.5rem; text-align: right;">
-                        <button class="cooking-btn">
+                        <button onclick="location.href='/cooking/{{.ID}}'" class="cooking-btn">
                             👨‍🍳 Főzés Indítása
                         </button>
                     </div>

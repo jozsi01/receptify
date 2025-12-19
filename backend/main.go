@@ -187,12 +187,44 @@ func handleCookingView(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func handleComment(w http.ResponseWriter, r *http.Request) {
+	receptId := r.PathValue("id")
+	var komment database.Comment
+	if err := json.NewDecoder(r.Body).Decode(&komment); err != nil {
+		fmt.Println("Something wrong with parsing the komment: ", err)
+	}
+	if err := database.AddCommentToRecept(receptId, komment); err != nil {
+		fmt.Println("Error inserting komemnt: ", err)
+		http.Error(w, fmt.Sprintf("Hiba a komment beiullesztésnél: %s", err), http.StatusInternalServerError)
+		return
+	}
+}
+func handleCommentView(w http.ResponseWriter, r *http.Request) {
+	receptId := r.PathValue("id")
+	result, err := database.GetReceptByID(receptId)
+	if err != nil {
+		fmt.Println(err)
+		http.NotFound(w, r)
+		return
+	}
+	fmt.Printf("%+v", result)
+	tmpl, err := template.ParseFiles("./templates/komment.html")
+	if err != nil {
+		http.Error(w, "Hiba a template betöltésekor", http.StatusInternalServerError)
+		return
+	}
+	tmpl.Execute(w, result)
+
+}
+
 func main() {
 	godotenv.Load()
 	database.ConnectDatabase()
 
 	http.HandleFunc("/prompt", handlePrompt)
 	http.HandleFunc("GET /cooking/{id}", handleCookingView)
+	http.HandleFunc("POST /comment/{id}", handleComment)
+	http.HandleFunc("GET /receptek/{id}/kommentek", handleCommentView)
 	http.HandleFunc("/", handleMainView)
 	http.HandleFunc("/receptek", handleReceptekView)
 	http.HandleFunc("/status", handleStatus)

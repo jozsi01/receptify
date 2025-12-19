@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vélemények: {{ .Name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <style>
+        :root {
+            --primary-color: #10b981;
+            --bg-color: #f8fafc;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --star-color: #fbbf24;
+            --card-bg: #ffffff;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding-bottom: 40px;
+        }
+
+        .top-nav {
+            background: white;
+            padding: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .back-btn {
+            text-decoration: none;
+            font-size: 1.5rem;
+            color: var(--text-main);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .back-btn:hover {
+            background-color: #f1f5f9;
+        }
+
+        .page-title {
+            font-weight: 800;
+            font-size: 1.1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        main {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        /* Összesítő kártya */
+        .summary-card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 16px;
+            text-align: center;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+            border: 1px solid #e2e8f0;
+        }
+
+        .big-rating {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .big-star {
+            color: var(--star-color);
+        }
+
+        .rating-subtitle {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        /* Komment lista */
+        .comments-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .comment-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.25rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border: 1px solid #f1f5f9;
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.8rem;
+        }
+
+        .star-badge {
+            background-color: #fffbeb;
+            /* Halvány sárga háttér */
+            color: #b45309;
+            /* Sötét sárga szöveg */
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            border: 1px solid #fcd34d;
+        }
+
+        .comment-text {
+            color: var(--text-main);
+            white-space: pre-line;
+            /* Hogy a sortörések megmaradjanak */
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            margin-top: 3rem;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 16px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: #e2e8f0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        /* --- Üres komment stílus --- */
+        .no-comment {
+            color: var(--text-muted); /* Szürke szín */
+            font-style: italic;       /* Dőlt betű */
+            font-size: 0.9em;         /* Picit kisebb betűméret */
+            opacity: 0.8;             /* Enyhe átlátszóság */
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        /* Opcionális: tehetsz elé egy kis ikont is CSS-ből */
+        .no-comment::before {
+            content: '💬';  /* Vagy használhatsz SVG ikont is */
+            font-style: normal;
+            opacity: 0.5;
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="top-nav">
+        <a href="/receptek" class="back-btn">←</a>
+        <div class="page-title">Vélemények</div>
+    </div>
+
+    <main>
+        <div class="summary-card">
+            <div class="big-rating">
+                <span class="big-star">★</span>
+                <span>{{ printf "%.1f" .GetAvrageRating }}</span>
+            </div>
+            <div class="rating-subtitle">
+                {{ .GetCommentCount }} értékelés alapján a(z) <strong>{{ .Name }}</strong> receptre
+            </div>
+        </div>
+
+        <div class="comments-list">
+            {{ if .Comments }}
+            {{ range .Comments }}
+            <div class="comment-card">
+                <div class="comment-header">
+                    <div class="user-avatar">👤</div>
+                    <div class="star-badge">
+                        {{ .Stars }}/10 ★
+                    </div>
+                </div>
+                <div class="comment-text">
+                    {{ if .Comment }}
+                    {{ .Comment }}
+                    {{ else }}
+                    <div class="no-comment">Nem írt hozzászólást</div>
+                    {{ end }}
+                </div>
+            </div>
+            {{ end }}
+            {{ else }}
+            <div class="empty-state">
+                <h3>Még nincsenek vélemények 😔</h3>
+                <p>Légy te az első, aki elkészíti és értékeli!</p>
+            </div>
+            {{ end }}
+        </div>
+    </main>
+
+</body>
+
+</html>
