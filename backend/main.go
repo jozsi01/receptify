@@ -58,7 +58,7 @@ func handlePrompt(w http.ResponseWriter, req *http.Request) {
 }
 
 func createRequestBody(encodedImages []string) string {
-	model := "google/gemma-3-12b-it:free"
+	model := "google/gemma-3-27b-it:free"
 	prompt := "Te egy szakács segéd vagy. Csatoltam 1 vagy több képet egy receptről. Kérlek, elemezd a képeket, és vond ki belőlük az információkat. A kimenet szigorúan csak JSON formátum legyen a következő struktúrával: { \"recept_neve\": \"string\", \"hozzavalok\": {\"<hozzvalo1>\":\"<mertekegyseg>\"}, {\"<hozzvalo1>\":\"<mertekegyseg>\"}, \"elkeszites\": {\"<Leirás az elkészítésről>\" }. Ha több képet kapsz, fésüld össze az információkat egyetlen receptté. Az elkészítés csak egy hosszú string legyen. Ha nem találsz mértékegységet egy receptnél akkor a mértékegység legyen \"izlés szerint\""
 	content := make([]ContentPart, 1)
 	content[0] = ContentPart{
@@ -110,6 +110,7 @@ func sendPrompt(jobID string, images []string) database.Recept {
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
+	fmt.Printf("raw response: %s\n", body)
 	var respPrompt OpenRouterResponse
 	json.Unmarshal(body, &respPrompt)
 	if err != nil {
