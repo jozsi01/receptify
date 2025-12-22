@@ -38,12 +38,13 @@
 
         .back-btn {
             text-decoration: none;
-            font-size: 1.5rem;
+            font-size: 2.5rem;
             color: var(--text-main);
             width: 40px;
             height: 40px;
+            
             display: flex;
-            align-items: center;
+            align-items: flex-end;
             justify-content: center;
             border-radius: 50%;
             transition: background 0.2s;
@@ -249,7 +250,7 @@
 <body>
 
     <div class="top-nav">
-        <a href="/receptek" class="back-btn">←</a>
+        <a href="/receptek" class="back-btn">&#8592;</a>
         <div class="page-title">{{ .Name }}</div>
     </div>
 
@@ -296,7 +297,7 @@
             <button class="close-modal" onclick="closeModal()">&times;</button>
             
             <h3 style="margin-top: 0;">Hogy sikerült?</h3>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">Értékeld a receptet 1-től 10-ig!</p>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Értékeld a receptet 1-től 5-ig!</p>
             
             <div class="stars-container">
                 <span class="star" onclick="rate(1)">★</span>
@@ -304,15 +305,14 @@
                 <span class="star" onclick="rate(3)">★</span>
                 <span class="star" onclick="rate(4)">★</span>
                 <span class="star" onclick="rate(5)">★</span>
-                <span class="star" onclick="rate(6)">★</span>
-                <span class="star" onclick="rate(7)">★</span>
-                <span class="star" onclick="rate(8)">★</span>
-                <span class="star" onclick="rate(9)">★</span>
-                <span class="star" onclick="rate(10)">★</span>
+                
             </div>
-
+            
             <textarea class="review-text" placeholder="Írj pár szót... Milyen lett? Változtattál valamin?"></textarea>
-
+            <div style="margin-bottom: 1.5rem; text-align: left;">
+                <label for="file-upload" style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 5px;">Fotó csatolása (opcionális)</label>
+                <input type="file" id="file-upload" accept="image/*" multiple style="font-size: 0.9rem;">
+            </div>
             <button class="submit-btn" onclick="submitReview()">Mentés</button>
         </div>
     </div>
@@ -358,54 +358,54 @@
         // Mentés gomb
         async function submitReview() {
             const text = document.querySelector('.review-text').value;
-            // A Go template behelyettesíti az ID-t ide stringként
             const recipeId = "{{ .ID }}"; 
             
-            // Validáció: Csak akkor küldjük, ha van csillag
             if (currentRating === 0) {
-                alert("Kérlek válassz egy értékelést!");
+                showToast("Kérlek válassz csillagot! ⭐", "error");
                 return;
             }
 
-            // Az adat összeállítása a Go structnak megfelelően
-            const payload = {
-                stars: currentRating,
-                comment: text
-                // ID-t nem küldünk, azt majd a DB generálja vagy nem szükséges
-            };
+            // MÓDOSÍTÁS: JSON helyett FormData-t használunk
+            const formData = new FormData();
+            formData.append('stars', currentRating);
+            formData.append('comment', text);
+            
+            const fileInput = document.getElementById('file-upload');
+            
+            // Ciklus az összes kiválasztott fájlon
+            for (let i = 0; i < fileInput.files.length; i++) {
+                // Ugyanazt a kulcsot ('images') használjuk minden fájlhoz
+                formData.append('images', fileInput.files[i]);
+            }
+            
+            
 
-            // Gomb letiltása, hogy ne nyomja meg kétszer
             const submitBtn = document.querySelector('.submit-btn');
             submitBtn.disabled = true;
             submitBtn.textContent = "Küldés...";
 
             try {
-                // Hálózati kérés (AJAX)
                 const response = await fetch(`/comment/${recipeId}`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
+                    // FONTOS: Itt NEM szabad beállítani a 'Content-Type': 'application/json'-t!
+                    // A böngésző automatikusan beállítja a multipart headert.
+                    body: formData 
                 });
 
+
                 if (response.ok) {
-                    showToast("Köszönjük a vissazjelzést","success")
+                    showToast("Sikeres mentés! Köszönjük.", "success");
                     closeModal();
-                    
-                    // Visszairányítás a recept listára, vagy maradhatsz itt is
-                    
+                    setTimeout(() => { window.location.href = "/receptek"; }, 2000);
                 } else {
-                    // HIBA (pl. 500 Internal Server Error)
                     const errorMsg = await response.text();
-                    alert("Hiba történt a mentéskor: " + errorMsg);
+                    showToast("Hiba: " + errorMsg, "error");
                     submitBtn.disabled = false;
                     submitBtn.textContent = "Mentés";
                 }
             } catch (error) {
-                // Hálózati hiba (pl. nincs internet)
                 console.error('Network error:', error);
-                alert("Hálózati hiba történt! Ellenőrizd a kapcsolatot.");
+                showToast("Hálózati hiba történt!", "error");
                 submitBtn.disabled = false;
                 submitBtn.textContent = "Mentés";
             }

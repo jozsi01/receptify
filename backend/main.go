@@ -9,7 +9,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"receptify/database"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -104,25 +106,24 @@ func sendPrompt(jobID string, images []string) database.Recept {
 	resp, err := client.Do(httpreq)
 	if err != nil {
 		fmt.Printf("error %s", err)
+		return database.Recept{}
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
-	fmt.Println("RAW RESPONSE: ", string(body))
 	var respPrompt OpenRouterResponse
 	json.Unmarshal(body, &respPrompt)
 	if err != nil {
 		fmt.Printf("error %s", err)
+		return database.Recept{}
 	}
 	var recept database.Recept
 	elso := strings.Index(respPrompt.Choices[0].Message.Content, "{")
 	uccso := strings.LastIndex(respPrompt.Choices[0].Message.Content, "}")
 	formattedContent := respPrompt.Choices[0].Message.Content[elso : uccso+1]
-	fmt.Println("Formatted json: ", formattedContent)
 	err = json.Unmarshal([]byte(formattedContent), &recept)
 	if err != nil {
 		fmt.Printf("Baj volta  REcept parsolásnál: %s\n", err)
 	}
-	fmt.Printf("Recept: %+v", recept)
 	jobStore.Store(jobID, Job{
 		ID:     jobID,
 		Status: "done",
@@ -186,19 +187,80 @@ func handleCookingView(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, result)
 
 }
-
 func handleComment(w http.ResponseWriter, r *http.Request) {
 	receptId := r.PathValue("id")
-	var komment database.Comment
-	if err := json.NewDecoder(r.Body).Decode(&komment); err != nil {
-		fmt.Println("Something wrong with parsing the komment: ", err)
-	}
-	if err := database.AddCommentToRecept(receptId, komment); err != nil {
-		fmt.Println("Error inserting komemnt: ", err)
-		http.Error(w, fmt.Sprintf("Hiba a komment beiullesztésnél: %s", err), http.StatusInternalServerError)
+
+	// 1. Multipart form feldolgozása (max 32 MB memória)
+	err := r.ParseMultipartForm(32 << 20)
+	if err != nil {
+		http.Error(w, "Túl nagy adatmennyiség", http.StatusBadRequest)
 		return
 	}
+
+	starsStr := r.FormValue("stars")
+	commentText := r.FormValue("comment")
+	stars, _ := strconv.Atoi(starsStr)
+	fmt.Printf("Commenttext: %s és stars: %d\n", commentText, stars)
+	// Ebbe gyűjtjük a fájlneveket
+	var savedFilenames []string
+
+	// 2. A "images" kulcs alatt lévő fájlok lekérése
+	files := r.MultipartForm.File["images"]
+	fmt.Printf("Ennyi kepet csatoltak: %d\n", len(files))
+	// Ciklus a feltöltött fájlokon
+	for _, fileHeader := range files {
+		// Fájl megnyitása
+		file, err := fileHeader.Open()
+		if err != nil {
+			fmt.Println("Hiba a fájl megnyitásakor:", err)
+			continue
+		}
+		defer file.Close()
+
+		// Egyedi fájlnév: időbélyeg + eredeti név
+		// (A time.Now().UnixNano() biztosítja, hogy ne legyenek azonos nevűek)
+		filename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), fileHeader.Filename)
+
+		// Mappa és útvonal (static/uploads mappának léteznie kell!)
+		os.MkdirAll(filepath.Join("static", "uploads"), os.ModePerm)
+		dstPath := filepath.Join("static", "uploads", filename)
+		// Üres fájl létrehozása a lemezen
+		dst, err := os.Create(dstPath)
+		if err != nil {
+			fmt.Println("Hiba a fájl létrehozásakor:", err)
+			continue
+		}
+
+		// Tartalom átmásolása
+		if _, err := io.Copy(dst, file); err != nil {
+			fmt.Println("Hiba a másoláskor:", err)
+			dst.Close()
+			continue
+		}
+		dst.Close()
+
+		// Ha sikeres, hozzáadjuk a listához
+		savedFilenames = append(savedFilenames, filename)
+	}
+
+	// 3. Struct összeállítása a fájlnevek listájával
+	ujKomment := database.Comment{
+		ID:      strconv.FormatInt(time.Now().UnixNano(), 10),
+		Stars:   stars,
+		Comment: commentText,
+		Images:  savedFilenames, // Itt adjuk át a tömböt
+	}
+
+	// 4. Mentés az adatbázisba
+	if err := database.AddCommentToRecept(receptId, ujKomment); err != nil {
+		http.Error(w, "Adatbázis hiba: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte("Siker"))
 }
+
 func handleCommentView(w http.ResponseWriter, r *http.Request) {
 	receptId := r.PathValue("id")
 	result, err := database.GetReceptByID(receptId)
@@ -207,7 +269,6 @@ func handleCommentView(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	fmt.Printf("%+v", result)
 	tmpl, err := template.ParseFiles("./templates/komment.html")
 	if err != nil {
 		http.Error(w, "Hiba a template betöltésekor", http.StatusInternalServerError)

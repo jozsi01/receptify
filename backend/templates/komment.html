@@ -40,12 +40,12 @@
 
         .back-btn {
             text-decoration: none;
-            font-size: 1.5rem;
+            font-size: 2.5rem;
             color: var(--text-main);
             width: 40px;
             height: 40px;
             display: flex;
-            align-items: center;
+            align-items: flex-end;
             justify-content: center;
             border-radius: 50%;
             transition: background 0.2s;
@@ -162,6 +162,32 @@
             justify-content: center;
             font-size: 1.2rem;
         }
+        /* Kép galéria rács */
+        .comment-gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .gallery-item {
+            width: 100px; /* Bélyegkép méret */
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .gallery-item:hover {
+            transform: scale(1.05);
+        }
+        
+        /* Ha valaki rákattint, megnézhetné nagyban (opcionális lightboxhoz) */
+        .gallery-link {
+            text-decoration: none;
+        }
         /* --- Üres komment stílus --- */
         .no-comment {
             color: var(--text-muted); /* Szürke szín */
@@ -208,14 +234,24 @@
                 <div class="comment-header">
                     <div class="user-avatar">👤</div>
                     <div class="star-badge">
-                        {{ .Stars }}/10 ★
+                        {{ .Stars }}/5 ★
                     </div>
                 </div>
                 <div class="comment-text">
                     {{ if .Comment }}
-                    {{ .Comment }}
+                        {{ .Comment }}
                     {{ else }}
-                    <div class="no-comment">Nem írt hozzászólást</div>
+                        <div class="no-comment">Nem írt hozzászólást</div>
+                    {{ end }}
+
+                    {{ if .Images }}
+                    <div class="comment-gallery">
+                        {{ range .Images }}
+                        <a href="/static/uploads/{{ . }}" target="_blank" class="gallery-link">
+                            <img src="/static/uploads/{{ . }}" alt="Feltöltött kép" class="gallery-item">
+                        </a>
+                        {{ end }}
+                    </div>
                     {{ end }}
                 </div>
             </div>

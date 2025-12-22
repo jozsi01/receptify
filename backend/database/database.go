@@ -39,9 +39,10 @@ func (r Recept) GetCommentCount() int {
 }
 
 type Comment struct {
-	ID      string `json:"id,omitempty" bson:"id,omitempty"`
-	Stars   int    `json:"stars,omitempty" bson:"stars,omitempty"`
-	Comment string `json:"comment,omitempty" bson:"comment,omitempty"`
+	ID      string   `json:"id,omitempty" bson:"id,omitempty"`
+	Stars   int      `json:"stars,omitempty" bson:"stars,omitempty"`
+	Comment string   `json:"comment,omitempty" bson:"comment,omitempty"`
+	Images  []string `json:"images,omitempty" bson:"images,omitempty"`
 }
 
 var mongoClient *mongo.Client
