@@ -20,3 +20,5 @@ Hardver: Raspberry Pi 5
 Elérés: Cloudflare Zero Trust Tunnel (biztonságos távoli elérés)
 
 Környezet: Docker (konténerizált futtatás)
+
+Elérhető: https://receptify.bozsik-services.me
