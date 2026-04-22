@@ -104,6 +104,22 @@
             background-color: rgb(9, 216, 9)
         }
 
+        .delete-btn {
+            background-color: #ef4444;
+            color: #fff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .delete-btn:hover {
+            background-color: #dc2626;
+        }
+
         .skeleton-text {
             height: 16px;
             width: 100%;
@@ -168,6 +184,122 @@
             margin-bottom: 1.5rem;
             font-size: 1.8rem;
             color: var(--text-main);
+        }
+
+        .filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .filter-pill {
+            text-decoration: none;
+            color: var(--text-muted);
+            background: #eef2f7;
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            padding: 0.45rem 0.9rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .filter-pill.active {
+            background: rgba(16, 185, 129, 0.12);
+            border-color: rgba(16, 185, 129, 0.4);
+            color: var(--primary-color);
+        }
+
+        .content-layout {
+            display: grid;
+            grid-template-columns: 260px minmax(0, 1fr);
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        .ingredients-sidebar {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            padding: 1rem;
+            position: sticky;
+            top: 90px;
+        }
+
+        .ingredients-sidebar h2 {
+            font-size: 0.95rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .ingredient-search {
+            width: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.55rem 0.65rem;
+            font-size: 0.88rem;
+            color: var(--text-main);
+            margin-bottom: 0.7rem;
+        }
+
+        .ingredient-filter-list {
+            max-height: 420px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 0.45rem;
+            margin-bottom: 0.9rem;
+            padding-right: 4px;
+        }
+
+        .ingredient-no-match {
+            display: none;
+            color: var(--text-muted);
+            font-size: 0.84rem;
+            margin-bottom: 0.7rem;
+        }
+
+        .ingredient-option {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            color: var(--text-main);
+            font-size: 0.88rem;
+        }
+
+        .ingredient-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .ingredient-apply-btn {
+            flex: 1;
+            border: none;
+            border-radius: 8px;
+            background: var(--primary-color);
+            color: #fff;
+            padding: 0.5rem 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .ingredient-clear-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-muted);
+            padding: 0.5rem 0.75rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .recipes-content {
+            min-width: 0;
         }
 
         /* --- Recept Kártya Stílus --- */
@@ -285,6 +417,26 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 0.75rem;
+        }
+
+        .recipe-header-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
+
+        .category-badge {
+            background: rgba(255, 255, 255, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-weight: 700;
+            white-space: nowrap;
         }
 
         .rating-badge {
@@ -309,6 +461,16 @@
             font-size: 0.8rem;
             opacity: 0.9;
         }
+
+        @media (max-width: 920px) {
+            .content-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .ingredients-sidebar {
+                position: static;
+            }
+        }
     </style>
 </head>
 
@@ -325,21 +487,81 @@
     <main>
         <h1>Mentett Receptek</h1>
 
+        <div class="filter-bar">
+            <a href="/receptek" class="filter-pill {{if eq .SelectedCategory ""}}active{{end}}">Összes</a>
+            <a href="/receptek?category=dessert" class="filter-pill {{if eq .SelectedCategory "dessert"}}active{{end}}">Desszert</a>
+            <a href="/receptek?category=main" class="filter-pill {{if eq .SelectedCategory "main"}}active{{end}}">Főétel</a>
+            <a href="/receptek?category=soup" class="filter-pill {{if eq .SelectedCategory "soup"}}active{{end}}">Leves</a>
+            <a href="/receptek?category=appetizers" class="filter-pill {{if eq .SelectedCategory "appetizers"}}active{{end}}">Előétel</a>
+        </div>
+
+        <div class="content-layout">
+            <aside class="ingredients-sidebar">
+                <h2>Hozzávaló szűrő</h2>
+                <form method="GET" action="/receptek">
+                    {{ if .SelectedCategory }}
+                    <input type="hidden" name="category" value="{{ .SelectedCategory }}">
+                    {{ end }}
+
+                    <input
+                        type="search"
+                        id="ingredient-search"
+                        class="ingredient-search"
+                        placeholder="Keresés hozzávalóra..."
+                        autocomplete="off"
+                    >
+
+                    <div class="ingredient-filter-list">
+                        {{ if .AvailableIngredients }}
+                        {{ range .AvailableIngredients }}
+                        <label class="ingredient-option" data-ingredient-name="{{ . }}">
+                            <input type="checkbox" name="ingredient" value="{{ . }}" {{ if index $.SelectedIngredientMap . }}checked{{ end }}>
+                            <span>{{ . }}</span>
+                        </label>
+                        {{ end }}
+                        {{ else }}
+                        <div id="ingredient-empty-message" style="display: none; color: var(--text-muted); font-size: 0.88rem;">Nincs elérhető hozzávaló.</div>
+                        {{ end }}
+                    </div>
+                    <div id="ingredient-no-match" class="ingredient-no-match">Nincs találat erre a keresésre.</div>
+
+                    <div class="ingredient-actions">
+                        <button type="submit" class="ingredient-apply-btn">Szűrés</button>
+                        {{ if .SelectedCategory }}
+                        <a class="ingredient-clear-link" href="/receptek?category={{ .SelectedCategory }}">Törlés</a>
+                        {{ else }}
+                        <a class="ingredient-clear-link" href="/receptek">Törlés</a>
+                        {{ end }}
+                    </div>
+                </form>
+            </aside>
+
+            <section class="recipes-content">
+
         <div class="recipe-list">
-            {{ if . }}
-            {{ range . }}
+            {{ if .Recipes }}
+            {{ range .Recipes }}
             <article class="recipe-card" style="cursor: pointer;">
                 <div onclick="location.href='/cooking/{{.ID}}'" class="recipe-header">
                     <div class="recipe-header-content">
                         <div class="recipe-title">{{ .Name }}</div>
-                        
-                        {{ if gt .GetCommentCount 0 }}
-                        <div onclick="event.stopPropagation(); location.href='/receptek/{{.ID}}/kommentek'" class="rating-badge">
-                            <span class="star-icon">★</span>
-                            <span>{{ printf "%.1f" .GetAvrageRating }}</span>
-                            <span class="rating-count">({{ .GetCommentCount }})</span>
+                        <div class="recipe-header-meta">
+                            <span class="category-badge">
+                                {{ if eq .Category "dessert" }}Desszert
+                                {{ else if eq .Category "soup" }}Leves
+                                {{ else if eq .Category "appetizers" }}Előétel
+                                {{ else }}Főétel
+                                {{ end }}
+                            </span>
+
+                            {{ if gt .GetCommentCount 0 }}
+                            <div onclick="event.stopPropagation(); location.href='/receptek/{{.ID}}/kommentek'" class="rating-badge">
+                                <span class="star-icon">★</span>
+                                <span>{{ printf "%.1f" .GetAvrageRating }}</span>
+                                <span class="rating-count">({{ .GetCommentCount }})</span>
+                            </div>
+                            {{ end }}
                         </div>
-                        {{ end }}
                     </div>
                 </div>
                 <div class="recipe-body">
@@ -367,7 +589,10 @@
                         {{ .Description }}
                     </div>
 
-                    <div style="margin-top: 1.5rem; text-align: right;">
+                    <div style="margin-top: 1.5rem; text-align: right; display: flex; justify-content: flex-end; gap: 0.6rem;">
+                        <button onclick="deleteRecept('{{.ID}}', event)" class="delete-btn" type="button">
+                            Törlés
+                        </button>
                         <button onclick="location.href='/cooking/{{.ID}}'" class="cooking-btn">
                             👨‍🍳 Főzés Indítása
                         </button>
@@ -377,12 +602,111 @@
             {{ end }}
             {{ else }}
             <div class="empty-state">
+                {{ if and .SelectedCategory .HasIngredientFilter }}
+                <p>Nincs recepted a kiválasztott kategóriában és hozzávalókkal.</p>
+                <p><a href="/receptek?category={{ .SelectedCategory }}" style="color: var(--primary-color);">Hozzávaló szűrők törlése</a></p>
+                {{ else if .SelectedCategory }}
+                <p>
+                    Nincs recepted ebben a kategóriában:
+                    <strong>
+                        {{ if eq .SelectedCategory "dessert" }}Desszert
+                        {{ else if eq .SelectedCategory "soup" }}Leves
+                        {{ else if eq .SelectedCategory "appetizers" }}Előétel
+                        {{ else }}Főétel
+                        {{ end }}
+                    </strong>.
+                </p>
+                <p><a href="/receptek" style="color: var(--primary-color);">Mutasd az összes receptet</a></p>
+                {{ else if .HasIngredientFilter }}
+                <p>Nincs recepted a kiválasztott hozzávalókkal.</p>
+                <p><a href="/receptek" style="color: var(--primary-color);">Hozzávaló szűrők törlése</a></p>
+                {{ else }}
                 <p>Még nincsenek feltöltött receptjeid.</p>
                 <p><a href="/" style="color: var(--primary-color);">Készíts egyet most!</a></p>
+                {{ end }}
             </div>
             {{ end }}
         </div>
+            </section>
+        </div>
     </main>
+
+    <script>
+        (function () {
+            const searchInput = document.getElementById('ingredient-search');
+            if (!searchInput) return;
+
+            const options = Array.from(document.querySelectorAll('.ingredient-option'));
+            const noMatch = document.getElementById('ingredient-no-match');
+            const emptyMessage = document.getElementById('ingredient-empty-message');
+
+            function normalizeText(text) {
+                return (text || '')
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .trim();
+            }
+
+            function filterOptions() {
+                const query = normalizeText(searchInput.value);
+
+                if (options.length === 0) {
+                    if (emptyMessage) {
+                        emptyMessage.style.display = query !== '' ? 'block' : 'none';
+                    }
+                    if (noMatch) {
+                        noMatch.style.display = 'none';
+                    }
+                    return;
+                }
+
+                let visibleCount = 0;
+
+                options.forEach((option) => {
+                    const ingredientName = normalizeText(option.getAttribute('data-ingredient-name'));
+                    const isVisible = query === '' || ingredientName.includes(query);
+                    option.style.display = isVisible ? '' : 'none';
+                    if (isVisible) visibleCount++;
+                });
+
+                if (emptyMessage) {
+                    emptyMessage.style.display = 'none';
+                }
+                if (noMatch) {
+                    noMatch.style.display = query !== '' && visibleCount === 0 ? 'block' : 'none';
+                }
+            }
+
+            searchInput.addEventListener('input', filterOptions);
+            filterOptions();
+        })();
+
+        async function deleteRecept(receptId, event) {
+            if (event) {
+                event.stopPropagation();
+            }
+
+            const confirmed = window.confirm('Biztosan törölni szeretnéd ezt a receptet?');
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/receptek/${receptId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error('A törlés nem sikerült.');
+                }
+
+                window.location.reload();
+            } catch (err) {
+                window.alert('Hiba történt a recept törlése közben.');
+            }
+        }
+    </script>
 
 </body>
 

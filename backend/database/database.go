@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,9 +20,26 @@ type Recept struct {
 	// If it is empty, Mongo generates one automatically.
 	ID          string            `json:"id,omitempty" bson:"id,omitempty"`
 	Name        string            `json:"recept_neve" bson:"recept_neve"`
+	Category    string            `json:"kategoria" bson:"kategoria"`
 	Ingridients map[string]string `json:"hozzavalok" bson:"hozzavalok"`
 	Description string            `json:"elkeszites" bson:"elkeszites"`
 	Comments    []Comment         `json:"comments,omitempty" bson:"comments,omitempty"`
+}
+
+func NormalizeCategory(category string) string {
+	cleaned := strings.TrimSpace(strings.ToLower(category))
+	switch cleaned {
+	case "dessert", "desszert":
+		return "dessert"
+	case "main", "foetel", "fotel", "főétel", "main course":
+		return "main"
+	case "soup", "leves":
+		return "soup"
+	case "appetizers", "appetizer", "eloetel", "eloeletel", "előétel", "starter":
+		return "appetizers"
+	default:
+		return ""
+	}
 }
 
 func (r Recept) GetAvrageRating() float32 {
@@ -88,6 +106,10 @@ func SaveRecept(r Recept) (*mongo.InsertOneResult, error) {
 	fmt.Print("heelo\n")
 	uuid := uuid.New()
 	r.ID = uuid.String()
+	r.Category = NormalizeCategory(r.Category)
+	if r.Category == "" {
+		r.Category = "main"
+	}
 	coll := mongoClient.Database("receptify").Collection("recepts")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -102,16 +124,29 @@ func SaveRecept(r Recept) (*mongo.InsertOneResult, error) {
 	return result, nil
 }
 
-func GetAllRecepts() ([]Recept, error) {
+func GetAllRecepts(category string) ([]Recept, error) {
 	coll := mongoClient.Database("receptify").Collection("recepts")
 
 	// 1. Create a context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	filter := bson.M{}
+	normalizedCategory := NormalizeCategory(category)
+	if normalizedCategory != "" {
+		if normalizedCategory == "main" {
+			filter["$or"] = bson.A{
+				bson.M{"kategoria": "main"},
+				bson.M{"kategoria": ""},
+				bson.M{"kategoria": bson.M{"$exists": false}},
+			}
+		} else {
+			filter["kategoria"] = normalizedCategory
+		}
+	}
+
 	// 2. Find all documents
-	// bson.M{} is an empty map, meaning "no filter" (match everything)
-	cursor, err := coll.Find(ctx, bson.M{})
+	cursor, err := coll.Find(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find documents: %w", err)
 	}
@@ -139,4 +174,18 @@ func GetReceptByID(recept_id string) (Recept, error) {
 		return res, err
 	}
 	return res, nil
+}
+
+func DeleteReceptByID(receptID string) (bool, error) {
+	coll := mongoClient.Database("receptify").Collection("recepts")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	result, err := coll.DeleteOne(ctx, bson.M{"id": receptID})
+	if err != nil {
+		return false, fmt.Errorf("failed to delete recept: %w", err)
+	}
+
+	return result.DeletedCount > 0, nil
 }

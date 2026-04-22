@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"receptify/database"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,6 +22,79 @@ import (
 
 var receptek []database.Recept
 var jobStore = sync.Map{}
+
+type ReceptListPageData struct {
+	Recipes               []database.Recept
+	SelectedCategory      string
+	AvailableIngredients  []string
+	SelectedIngredientMap map[string]bool
+	HasIngredientFilter   bool
+}
+
+func normalizeIngredientName(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
+}
+
+func buildAvailableIngredients(recepts []database.Recept) []string {
+	seen := map[string]string{}
+	for _, recept := range recepts {
+		for ingredient := range recept.Ingridients {
+			normalized := normalizeIngredientName(ingredient)
+			if normalized == "" {
+				continue
+			}
+			if _, exists := seen[normalized]; !exists {
+				seen[normalized] = strings.TrimSpace(ingredient)
+			}
+		}
+	}
+
+	result := make([]string, 0, len(seen))
+	for _, ingredient := range seen {
+		result = append(result, ingredient)
+	}
+	sort.Strings(result)
+	return result
+}
+
+func filterReceptsByIngredients(recepts []database.Recept, selectedIngredients []string) []database.Recept {
+	if len(selectedIngredients) == 0 {
+		return recepts
+	}
+
+	normalizedSelected := make([]string, 0, len(selectedIngredients))
+	for _, ingredient := range selectedIngredients {
+		normalized := normalizeIngredientName(ingredient)
+		if normalized != "" {
+			normalizedSelected = append(normalizedSelected, normalized)
+		}
+	}
+	if len(normalizedSelected) == 0 {
+		return recepts
+	}
+
+	filtered := make([]database.Recept, 0, len(recepts))
+	for _, recept := range recepts {
+		recipeIngredients := map[string]bool{}
+		for ingredient := range recept.Ingridients {
+			recipeIngredients[normalizeIngredientName(ingredient)] = true
+		}
+
+		matchesAll := true
+		for _, selected := range normalizedSelected {
+			if !recipeIngredients[selected] {
+				matchesAll = false
+				break
+			}
+		}
+
+		if matchesAll {
+			filtered = append(filtered, recept)
+		}
+	}
+
+	return filtered
+}
 
 func handlePrompt(w http.ResponseWriter, req *http.Request) {
 	req.ParseMultipartForm(10 << 20)
@@ -59,7 +133,7 @@ func handlePrompt(w http.ResponseWriter, req *http.Request) {
 
 func createRequestBody(encodedImages []string) string {
 	model := "google/gemma-3-27b-it:free"
-	prompt := "Te egy szakács segéd vagy. Csatoltam 1 vagy több képet egy receptről. Kérlek, elemezd a képeket, és vond ki belőlük az információkat. A kimenet szigorúan csak JSON formátum legyen a következő struktúrával: { \"recept_neve\": \"string\", \"hozzavalok\": {\"<hozzvalo1>\":\"<mertekegyseg>\"}, {\"<hozzvalo1>\":\"<mertekegyseg>\"}, \"elkeszites\": {\"<Leirás az elkészítésről>\" }. Ha több képet kapsz, fésüld össze az információkat egyetlen receptté. Az elkészítés csak egy hosszú string legyen. Ha nem találsz mértékegységet egy receptnél akkor a mértékegység legyen \"izlés szerint\""
+	prompt := "Te egy szakács segéd vagy. Csatoltam 1 vagy több képet egy receptről. Elemezd a képeket, és a válaszod szigorúan csak valid JSON legyen, semmi más szöveg vagy markdown. A JSON struktúra pontosan ez legyen: {\"recept_neve\":\"string\",\"kategoria\":\"dessert|main|soup|appetizers\",\"hozzavalok\":{\"hozzavalo\":\"mennyiseg\"},\"elkeszites\":\"string\"}. A kategória mező kötelező, és csak az alábbi négy érték egyike lehet: dessert, main, soup, appetizers. Te döntsd el a legjobb kategóriát a kép alapján. Ha több kép van, egyetlen receptté fűzd össze az információkat. Az elkészítés legyen egy hosszabb, összefüggő string. Ha egy hozzávalónál nincs mennyiség, az érték legyen ízlés szerint."
 	content := make([]ContentPart, 1)
 	content[0] = ContentPart{
 		Type: "text",
@@ -89,7 +163,7 @@ func createRequestBody(encodedImages []string) string {
 	}
 	return string(jsonData)
 }
-func sendPrompt(jobID string, images []string) database.Recept {
+func sendPrompt(jobID string, images []string) {
 
 	apiKey := os.Getenv("API_KEY")
 	client := http.Client{Timeout: time.Duration(120) * time.Second}
@@ -106,18 +180,24 @@ func sendPrompt(jobID string, images []string) database.Recept {
 	resp, err := client.Do(httpreq)
 	if err != nil {
 		fmt.Printf("error %s", err)
-		return database.Recept{}
+
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	fmt.Printf("raw response: %s\n", body)
 	var respPrompt OpenRouterResponse
-	json.Unmarshal(body, &respPrompt)
-	if err != nil {
-		fmt.Printf("error %s", err)
-		return database.Recept{}
+	err = json.Unmarshal(body, &respPrompt)
+	if err != nil || len(respPrompt.Choices) == 0 {
+		jobStore.Store(jobID, Job{
+			ID:     jobID,
+			Status: "error",
+			Result: &database.Recept{},
+		})
+		return
 	}
+	fmt.Printf("oprouter resp: %+v", respPrompt)
 	var recept database.Recept
+
 	elso := strings.Index(respPrompt.Choices[0].Message.Content, "{")
 	uccso := strings.LastIndex(respPrompt.Choices[0].Message.Content, "}")
 	formattedContent := respPrompt.Choices[0].Message.Content[elso : uccso+1]
@@ -134,7 +214,6 @@ func sendPrompt(jobID string, images []string) database.Recept {
 	if err != nil {
 		panic(err)
 	}
-	return recept
 }
 
 func handleStatus(w http.ResponseWriter, r *http.Request) {
@@ -159,11 +238,32 @@ func handleReceptekView(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
-	receptek, err = database.GetAllRecepts()
+	selectedCategory := database.NormalizeCategory(r.URL.Query().Get("category"))
+	selectedIngredients := r.URL.Query()["ingredient"]
+	receptek, err = database.GetAllRecepts(selectedCategory)
 	if err != nil {
 		panic(err)
 	}
-	err = tmpl.Execute(w, receptek)
+
+	availableIngredients := buildAvailableIngredients(receptek)
+	receptek = filterReceptsByIngredients(receptek, selectedIngredients)
+
+	selectedIngredientMap := map[string]bool{}
+	for _, ingredient := range selectedIngredients {
+		trimmed := strings.TrimSpace(ingredient)
+		if trimmed != "" {
+			selectedIngredientMap[trimmed] = true
+		}
+	}
+
+	pageData := ReceptListPageData{
+		Recipes:               receptek,
+		SelectedCategory:      selectedCategory,
+		AvailableIngredients:  availableIngredients,
+		SelectedIngredientMap: selectedIngredientMap,
+		HasIngredientFilter:   len(selectedIngredientMap) > 0,
+	}
+	err = tmpl.Execute(w, pageData)
 	if err != nil {
 		fmt.Printf("Template parrsing err: %s\n", err)
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
@@ -279,6 +379,26 @@ func handleCommentView(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func handleDeleteRecept(w http.ResponseWriter, r *http.Request) {
+	receptID := r.PathValue("id")
+	if strings.TrimSpace(receptID) == "" {
+		http.Error(w, "Hianyzo recept azonosito", http.StatusBadRequest)
+		return
+	}
+
+	deleted, err := database.DeleteReceptByID(receptID)
+	if err != nil {
+		http.Error(w, "Adatbazis hiba", http.StatusInternalServerError)
+		return
+	}
+	if !deleted {
+		http.Error(w, "A recept nem talalhato", http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func main() {
 	godotenv.Load()
 	database.ConnectDatabase()
@@ -287,6 +407,7 @@ func main() {
 	http.HandleFunc("GET /cooking/{id}", handleCookingView)
 	http.HandleFunc("POST /comment/{id}", handleComment)
 	http.HandleFunc("GET /receptek/{id}/kommentek", handleCommentView)
+	http.HandleFunc("DELETE /receptek/{id}", handleDeleteRecept)
 	http.HandleFunc("/", handleMainView)
 	http.HandleFunc("/receptek", handleReceptekView)
 	http.HandleFunc("/status", handleStatus)
